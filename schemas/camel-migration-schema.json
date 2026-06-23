@@ -16,6 +16,11 @@
     }
   },
   "definitions": {
+    "columnDefinition": {
+      "type": "string",
+      "pattern": "^(id|string(:\\d+)?|char(:\\d+)?|text|mediumText|longText|integer|int|bigInteger|bigint|smallInteger|smallint|tinyInteger|boolean|bool|decimal(:\\d+,\\d+)?|float|double|date|time|dateTime|datetime|timestamp|json|jsonb|binary|uuid|enum:[a-zA-Z0-9_,'\" \\/-]+)(\\s+(nullable|unique|primary|primary_key|unsigned|autoIncrement|auto_increment|useCurrent|default:'[^']*'|default:\"[^\"]*\"|default:\\S+))*$",
+      "markdownDescription": "Format: `type[:attribute] [modifier] [modifier:value] ...`\n\n**Types:**\n- `id` — unsigned bigInteger PK auto-increment\n- `string[:N]` — VARCHAR(N), default 255\n- `char[:N]` — CHAR(N), default 1\n- `text` / `mediumText` / `longText`\n- `integer` / `int` / `bigInteger` / `bigint`\n- `smallInteger` / `smallint` / `tinyInteger`\n- `boolean` / `bool`\n- `decimal[:total,places]` — default 8,2\n- `float` / `double`\n- `date` / `time` / `dateTime` / `datetime`\n- `timestamp`\n- `json` / `jsonb`\n- `binary` / `uuid`\n- `enum:val1,val2,...`\n\n**Modifiers:**\n`nullable` `unique` `primary` `primary_key` `unsigned`\n`autoIncrement` `auto_increment` `useCurrent`\n`default:VALUE` or `default:'quoted value'`\n\n**Examples:**\n- `id: id`\n- `title: string:150`\n- `slug: string:180 unique`\n- `price: decimal:10,2 default:0.00`\n- `status: enum:draft,published default:'draft'`\n- `is_active: boolean default:1`\n- `created_at: timestamp useCurrent`\n- `meta: json nullable`\n- `token: uuid nullable`"
+    },
     "migrationBlock": {
       "type": "object",
       "additionalProperties": {
@@ -29,63 +34,64 @@
           },
           "table": {
             "type": "string",
-            "description": "The name of the target database table."
+            "description": "The name of the target database table. Defaults to the pluralized logical key when omitted."
           },
           "columns": {
             "type": "object",
-            "description": "Definitions for column names using Camel's inline types and modifiers.",
-            "additionalProperties": {
-              "type": "string",
-              "pattern": "^(id|string:\\d+|longText|integer|bigInteger|decimal:\\d+,\\d+|enum:[a-zA-Z0-9_,\\s\\/\\-\"]+|timestamp)(\\s+(nullable|unique|useCurrent|default:\\S+))*$",
-              "markdownDescription": "Format: `type:attribute modifier modifier:value`\n\n**Examples:**\n- `id: id`\n- `title: string:150`\n- `slug: string:180 unique`\n- `status: enum:draft,published default:'draft'`\n- `created_at: timestamp useCurrent`"
-            }
+            "description": "Column definitions for action: create.",
+            "additionalProperties": { "$ref": "#/definitions/columnDefinition" }
+          },
+          "indexes": {
+            "$ref": "#/definitions/indexes",
+            "description": "Indexes to create alongside the table (action: create). Rendered as separate CREATE INDEX statements."
           },
           "add_columns": {
             "type": "object",
-            "description": "New columns to introduce during an alter action.",
-            "additionalProperties": {
-              "type": "string",
-              "pattern": "^(id|string:\\d+|longText|integer|bigInteger|decimal:\\d+,\\d+|enum:[a-zA-Z0-9_,\\s\\/\\-\"]+|timestamp)(\\s+(nullable|unique|useCurrent|default:\\S+))*$"
-            }
+            "description": "New columns to introduce during action: alter.",
+            "additionalProperties": { "$ref": "#/definitions/columnDefinition" }
+          },
+          "modify_columns": {
+            "type": "object",
+            "description": "Existing columns to retype or change nullability/default during action: alter. Not supported on SQLite — use action: raw there.",
+            "additionalProperties": { "$ref": "#/definitions/columnDefinition" }
           },
           "rename_columns": {
             "type": "object",
-            "description": "Key-value pair specifying column renames. Key is the current name, value is the new target name.",
-            "additionalProperties": {
-              "type": "string"
-            }
+            "description": "Column renames during action: alter. Key = current name, value = new name.",
+            "additionalProperties": { "type": "string" }
           },
           "drop_columns": {
             "type": "array",
-            "description": "List of columns to remove from the table.",
+            "description": "Columns to remove during action: alter.",
             "items": { "type": "string" }
           },
           "foreign": {
             "$ref": "#/definitions/foreignKeys",
-            "description": "Foreign key relationships declared during table creation."
+            "description": "Foreign keys declared inline during action: create. The only way to attach FKs in SQLite."
           },
           "add_foreign": {
             "$ref": "#/definitions/foreignKeys",
-            "description": "Foreign keys to introduce during a table alteration."
+            "description": "Foreign keys to add during action: alter. Not supported on SQLite."
           },
           "drop_foreign": {
             "type": "array",
-            "description": "Array of named foreign key constraints to drop.",
+            "description": "Constraint names to drop during action: alter. Not supported on SQLite.",
             "items": { "type": "string" }
           },
           "add_indexes": {
             "$ref": "#/definitions/indexes",
-            "description": "Indexes to build during a table alteration."
+            "description": "Indexes to add during action: alter."
           },
           "drop_indexes": {
             "type": "array",
-            "description": "Array of index constraint names to drop.",
+            "description": "Index names to drop during action: alter.",
             "items": { "type": "string" }
           },
           "statements": {
             "type": "array",
-            "description": "Raw string statements to process directly when action is set to 'raw'.",
-            "items": { "type": "string" }
+            "description": "Verbatim SQL statements for action: raw. Author owns dialect correctness.",
+            "items": { "type": "string" },
+            "minItems": 1
           }
         }
       }
@@ -100,20 +106,22 @@
           "name": { "type": "string" },
           "columns": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": { "type": "string" },
+            "minItems": 1
           },
           "references_table": { "type": "string" },
           "references_columns": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": { "type": "string" },
+            "minItems": 1
           },
           "on_delete": {
             "type": "string",
-            "enum": ["cascade", "restrict", "set null", "no action"]
+            "enum": ["cascade", "restrict", "set null", "set default", "no action"]
           },
           "on_update": {
             "type": "string",
-            "enum": ["cascade", "restrict", "set null", "no action"]
+            "enum": ["cascade", "restrict", "set null", "set default", "no action"]
           }
         }
       }

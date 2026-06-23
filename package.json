@@ -1,9 +1,9 @@
 {
 	"name": "camel-validator",
 	"displayName": "Camel Migration Validator",
-  "publisher": "martin3zra",
+  	"publisher": "martin3zra",
 	"description":"Syntax validation and IntelliSense autocompletion for Camel migration files.",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"engines": {
 		"vscode": "^1.80.0"
 	},

@@ -1,0 +1,46 @@
+{
+	"name": "camel-validator",
+	"displayName": "Camel Migration Validator",
+	"description":"Syntax validation and IntelliSense autocompletion for Camel migration files.",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.80.0"
+	},
+	"categories": [
+		"Linters",
+		"Programming Languages"
+	],
+	"main": "./out/extension.js",
+	"activationEvents": [
+		"workspaceContains:**/database/*.yaml",
+		"workspaceContains:**/camel.yaml"
+	],
+	"extensionDependencies": [
+		"redhat.vscode-yaml"
+	],
+	"contributes": {
+		"yamlValidation": [
+			{
+				"fileMatch": [
+					"**/database/*.yaml",
+					"**/database/*.yml"
+				],
+				"url": "./schemas/camel-migration-schema.json"
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/martin3zra/camel-validator.git"
+	},
+	"devDependencies": {
+		"@types/node": "^18.x.x",
+		"@types/vscode": "^1.80.0",
+		"typescript": "^5.x.x"
+	}
+}

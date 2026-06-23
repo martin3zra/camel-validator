@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Camel Migration Specification",
+  "description": "JSON Schema for validating Camel database migration YAML files.",
+  "type": "object",
+  "required": ["up", "down"],
+  "additionalProperties": false,
+  "properties": {
+    "up": {
+      "$ref": "#/definitions/migrationBlock",
+      "description": "The forward mutation block applied during migration."
+    },
+    "down": {
+      "$ref": "#/definitions/migrationBlock",
+      "description": "The reverse mutation block applied during a rollback."
+    }
+  },
+  "definitions": {
+    "migrationBlock": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["create", "alter", "drop", "raw"],
+            "description": "The execution strategy for this specific table lifecycle block."
+          },
+          "table": {
+            "type": "string",
+            "description": "The name of the target database table."
+          },
+          "columns": {
+            "type": "object",
+            "description": "Definitions for column names using Camel's inline types and modifiers.",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(id|string:\\d+|longText|integer|bigInteger|decimal:\\d+,\\d+|enum:[a-zA-Z0-9_,\\s\\/\\-\"]+|timestamp)(\\s+(nullable|unique|useCurrent|default:\\S+))*$",
+              "markdownDescription": "Format: `type:attribute modifier modifier:value`\n\n**Examples:**\n- `id: id`\n- `title: string:150`\n- `slug: string:180 unique`\n- `status: enum:draft,published default:'draft'`\n- `created_at: timestamp useCurrent`"
+            }
+          },
+          "add_columns": {
+            "type": "object",
+            "description": "New columns to introduce during an alter action.",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(id|string:\\d+|longText|integer|bigInteger|decimal:\\d+,\\d+|enum:[a-zA-Z0-9_,\\s\\/\\-\"]+|timestamp)(\\s+(nullable|unique|useCurrent|default:\\S+))*$"
+            }
+          },
+          "rename_columns": {
+            "type": "object",
+            "description": "Key-value pair specifying column renames. Key is the current name, value is the new target name.",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "drop_columns": {
+            "type": "array",
+            "description": "List of columns to remove from the table.",
+            "items": { "type": "string" }
+          },
+          "foreign": {
+            "$ref": "#/definitions/foreignKeys",
+            "description": "Foreign key relationships declared during table creation."
+          },
+          "add_foreign": {
+            "$ref": "#/definitions/foreignKeys",
+            "description": "Foreign keys to introduce during a table alteration."
+          },
+          "drop_foreign": {
+            "type": "array",
+            "description": "Array of named foreign key constraints to drop.",
+            "items": { "type": "string" }
+          },
+          "add_indexes": {
+            "$ref": "#/definitions/indexes",
+            "description": "Indexes to build during a table alteration."
+          },
+          "drop_indexes": {
+            "type": "array",
+            "description": "Array of index constraint names to drop.",
+            "items": { "type": "string" }
+          },
+          "statements": {
+            "type": "array",
+            "description": "Raw string statements to process directly when action is set to 'raw'.",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "foreignKeys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "columns", "references_table", "references_columns"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "columns": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "references_table": { "type": "string" },
+          "references_columns": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "on_delete": {
+            "type": "string",
+            "enum": ["cascade", "restrict", "set null", "no action"]
+          },
+          "on_update": {
+            "type": "string",
+            "enum": ["cascade", "restrict", "set null", "no action"]
+          }
+        }
+      }
+    },
+    "indexes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "columns"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "columns": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "unique": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
